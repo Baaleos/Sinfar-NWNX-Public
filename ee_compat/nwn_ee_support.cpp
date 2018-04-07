@@ -17,6 +17,8 @@ unsigned char d_ret_code_upateclientgo[0x20];
 int (*UpdateClientGameObjectsForPlayer_Org)(CServerExoAppInternal*, CNWSPlayer*, int, unsigned long long) = (int (*)(CServerExoAppInternal*, CNWSPlayer*, int, unsigned long long))&d_ret_code_upateclientgo;
 int UpdateClientGameObjectsForPlayer_Hook(CServerExoAppInternal* server_internal, CNWSPlayer* player, int p3, unsigned long long p4)
 {
+	sending_obj_update_player = player;
+	
 	return UpdateClientGameObjectsForPlayer_Org(server_internal, player, p3, p4);
 }
 
