@@ -552,119 +552,7 @@ namespace core
 		if (cgoa_iter == cgoa.end()) return NULL;
 		return cgoa_iter->second->vtable->AsNWSArea(cgoa_iter->second);
 	}
-
-	void (*CNWSItem_Destructor)(CNWSItem*, int) = (void (*)(CNWSItem*, int))0x0819f0c0;
-
-	std::unordered_map<std::string, std::deque<uint32_t>> tags_map;
-	bool safe_add_to_tags_map(const std::string& tag, uint32_t object_id)
-	{
-		if (tag.empty() || tag == "NULL")
-		{
-			return false;
-		}
-		CGameObject* o = GetGameObject(object_id);
-		if (o)
-		{
-			if (o->type == 6 ||  //items
-				(o->type == 9 && strncmp(tag.c_str(), "P_", 2) != 0)) //placeables
-			{
-				return false;
-			}
-		}
-
-		tags_map[tag].push_front(object_id);
-		return true;
-	}
-	void remove_object_from_tags_map(const std::string& tag, uint32_t object_id)
-	{
-		auto objects_with_tag_iter = tags_map.find(tag);
-		if (objects_with_tag_iter != tags_map.end())
-		{
-			auto& objets_with_tag = objects_with_tag_iter->second;
-			for (auto iter=objets_with_tag.begin(); iter!=objets_with_tag.end(); iter++)
-			{
-				if (*iter == object_id)
-				{
-					objets_with_tag.erase(iter);
-					break;
-				}
-			}
-			if (objets_with_tag.empty())
-			{
-				tags_map.erase(objects_with_tag_iter);
-			}
-		}
-	}
-	unsigned char d_ret_code_addlookup[0x20];
-	int (*AddToLookupTable_Org)(CNWSModule*, CExoString*, uint32_t) = (int (*)(CNWSModule*, CExoString*, uint32_t))&d_ret_code_addlookup;
-	int AddToLookupTable_HookProc(CNWSModule* module, CExoString* exo_tag, uint32_t object_id)
-	{
-		std::string tag;
-		if (exo_tag->text)
-		{
-			tag = exo_tag->text;
-			exo_tag->CExoString::~CExoString();
-		}
-		safe_add_to_tags_map(tag, object_id);
-		return 1;
-	}
-	unsigned char d_ret_code_rmlookup[0x20];
-	int (*RemoveFromLookupTable_Org)(CNWSModule*, CExoString*, uint32_t) = (int (*)(CNWSModule*, CExoString*, uint32_t))&d_ret_code_rmlookup;
-	int RemoveFromLookupTable_HookProc(CNWSModule* module, CExoString* exo_tag, uint32_t object_id)
-	{
-		std::string tag;
-		if (exo_tag->text)
-		{
-			tag = exo_tag->text;
-			exo_tag->CExoString::~CExoString();
-		}
-		remove_object_from_tags_map(tag, object_id);
-		return 1;
-	}
-	int RemoveItemFromLookupTable(CNWSModule* module, CExoString* exo_tag, uint32_t object_id)
-	{
-		exo_tag->CExoString::~CExoString();
-		return 1;
-	}
-	int RemovePlaceableFromLookupTable(CNWSModule* module, CExoString* exo_tag, uint32_t object_id)
-	{
-		std::string tag;
-		if (exo_tag->text)
-		{
-			tag = exo_tag->text;
-			exo_tag->CExoString::~CExoString();
-		}
-
-		if (tag.empty() || tag == "NULL")
-		{
-			return 1;
-		}
-
-		remove_object_from_tags_map(tag, object_id);
-		return 1;
-	}
-	uint32_t find_object_by_tag(const std::string& tag, uint32_t index)
-	{
-		auto objects_with_tag_iter = tags_map.find(tag);
-		if (objects_with_tag_iter != tags_map.end())
-		{
-			auto& objets_with_tag = objects_with_tag_iter->second;
-			if (index < objets_with_tag.size())
-			{
-				return objets_with_tag.at(index);
-			}
-		}
-		return OBJECT_INVALID;
-	}
-	uint32_t FindObjectByTag_HookProc(CNWSModule* module, CExoString* exo_tag, uint32_t index)
-	{
-		return find_object_by_tag(exo_tag->to_str(), index);
-	}
-	uint32_t FindObjectByTagAndType_HookProc(CNWSModule* module, CExoString* exo_tag, int type, uint32_t index)
-	{
-		return find_object_by_tag(exo_tag->to_str(), index);
-	}
-
+	
 	CNWSScriptVarTable* GetGameObjectVarTable(CGameObject* o)
 	{
 		switch (o->type)
@@ -872,14 +760,6 @@ namespace core
 		hook_function(0x080b1e10, (unsigned long)GetAreaById_HookProc, d_ret_code_nouse, 12);
 		hook_function(0x0805e8b8, (unsigned long)GetPlayerGameObject_HookProc, d_ret_code_nouse, 9);
 		hook_function(0x081d5028, (unsigned long)GetArea_HookProc, d_ret_code_nouse, 12);
-
-		//Lookup Table (trying to improve performance)
-		hook_function(0x081bead4, (unsigned long)AddToLookupTable_HookProc, d_ret_code_addlookup, 11);
-		hook_function(0x081bec28, (unsigned long)RemoveFromLookupTable_HookProc, d_ret_code_rmlookup, 11);
-		hook_call(0x0819f108, (uint32_t)RemoveItemFromLookupTable);
-		hook_call(0x081dbeae, (uint32_t)RemovePlaceableFromLookupTable);
-		hook_function(0x081bee08, (unsigned long)FindObjectByTag_HookProc, d_ret_code_nouse, 12);
-		hook_function(0x081bef74, (unsigned long)FindObjectByTagAndType_HookProc, d_ret_code_nouse, 11);
 	}
 	REGISTER_INIT(init);
 
